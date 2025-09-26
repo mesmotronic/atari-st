@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Atari ST | Made by Mesmotronic</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0" />
+  <link type="text/css" rel="stylesheet" href="main.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#111111">
+
+  <style>
+    body {
+      background-color: #111;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: monospace;
+      color: #fff;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    a {
+      color: #00ff00;
+      text-decoration: none;
+    }
+
+    #info {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      text-align: right;
+      z-index: 1;
+      padding: 15px 17px;
+      filter: drop-shadow(0px 0px 3px #000);
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="info">
+    Made by <a href="https://x.com/mesmotronic" target="_blank">@mesmotronic</a>
+    <br />See <a href="https://github.com/mesmotronic/atari-st" target="_blank">README</a> for attributions
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "gsap": "https://esm.sh/gsap",
+        "three": "https://esm.sh/three",
+        "three/addons/": "https://esm.sh/three/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="main.js"></script>
+</body>
+
+</html>
