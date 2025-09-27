@@ -8,7 +8,7 @@ It’s not just a pic, vid, or animation on the monitor – it’s a proper, ful
 
 Built with [Three.js](https://threejs.org), because like the Atari ST it's brilliant and offers _Power Without The Price_.
 
-(Click here)[https://mesmotronic.github.io/atari-st] to check out the awesome little green 3D desktop!
+[Click here](https://mesmotronic.github.io/atari-st) to check out the awesome little green 3D desktop now!
 
 ## Models
 
