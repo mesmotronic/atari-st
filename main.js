@@ -286,14 +286,15 @@ async function init() {
     controlsDiv.style.width = "100%";
     controlsDiv.style.height = "100%";
     controlsDiv.style.zIndex = "0";
+    controlsDiv.style.cursor = "grab";
     document.body.appendChild(controlsDiv);
 
     controls = new OrbitControls(camera);
     controls.enableDamping = true;
     controls.enabled = false;
     controls.connect(controlsDiv);
-    controls.addEventListener("start", () => domElement.style.cursor = "grabbing");
-    controls.addEventListener("end", () => domElement.style.cursor = "grab");
+    controls.addEventListener("start", () => controlsDiv.style.cursor = "grabbing");
+    controls.addEventListener("end", () => controlsDiv.style.cursor = "grab");
   }
 
   window.addEventListener("resize", resizeHandler);

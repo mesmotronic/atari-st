@@ -6,7 +6,9 @@ To mark the 40th anniversary of the Atari ST (1985-2025), check out this fantast
 
 It’s not just a pic, vid, or animation on the monitor – it’s a proper, fully working [Atari ST](https://www.hatari-emu.org/) you can mess about with in real-time, right here in your web browser.
 
-Built using [Three.js](https://threejs.org), because like the Atari ST it's brilliant and offers _Power Without The Price_.
+Built with [Three.js](https://threejs.org), because like the Atari ST it's brilliant and offers _Power Without The Price_.
+
+(Click here)[https://mesmotronic.github.io/atari-st] to check out the awesome little green 3D desktop!
 
 ## Models
 
