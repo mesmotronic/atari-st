@@ -184,7 +184,12 @@ Module["expectedDataFileDownloads"]++;
     remote_package_size: 347328,
   });
 })();
-Module["arguments"] = ["--desktop", "false", "-d", "/share/hatari/fs/", "--machine", "ste", "--statusbar", "false"];
+Module["arguments"] = [
+  "--desktop", "false",
+  "-d", "/share/hatari/fs/",
+  "--machine", "ste",
+  "--statusbar", "false",
+];
 var moduleOverrides = Object.assign({}, Module);
 var arguments_ = [];
 var thisProgram = "./this.program";
