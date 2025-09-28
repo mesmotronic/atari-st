@@ -2,7 +2,7 @@
 
 <img width="100%" alt="image" src="https://github.com/user-attachments/assets/bc2b552a-04c4-45a6-9e4f-a72ff19801d7" />
 
-To mark the 40th anniversary of the Atari ST (1985-2025), check out this fantastic interactive Atari ST!
+To mark its 40th anniversary (1985-2025), check out this fantastic interactive Atari ST!
 
 It’s not just a picture, video or animation on the monitor – it’s a fully working 1MB Atari STe you can mess about with in real-time, right here in your web browser.
 
