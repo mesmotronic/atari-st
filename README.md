@@ -6,7 +6,7 @@ To mark its 40th anniversary (1985-2025), check out this fantastic interactive A
 
 It’s not just a picture, video or animation on the monitor – it’s a fully working 1MB Atari STe you can mess about with in real-time, right here in your web browser.
 
-In keeping with the ST's famous slogan, _Power Without The Price_, this was built by [Neil Rackett](https://github.com/neilrackett) from [Mesmotronic](https://github.com/mesmotronic) using the amazing open source [Three.js](https://threejs.org) and [Hatari](https://www.hatari-emu.org/) projects.
+In keeping with the ST's famous slogan, _Power Without The Price_, this was built by [Neil Rackett](https://github.com/neilrackett) from [Mesmotronic](https://github.com/mesmotronic) using 2 amazing open source projects: [Three.js](https://threejs.org) and [Hatari](https://www.hatari-emu.org/).
 
 It's best with a mouse, but works well with touch, so [click here](https://mesmotronic.github.io/atari-st) to check it out for yourself!
 
