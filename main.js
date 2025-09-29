@@ -93,7 +93,7 @@ async function init() {
   document.body.appendChild(rendererWebGL.domElement);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
-  camera.position.set(-500, 300, 1800);
+  camera.position.set(-500, 300, 2000);
   camera.lookAt(0, 0, 0);
 
   scene = new THREE.Scene();
