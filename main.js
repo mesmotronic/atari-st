@@ -9,6 +9,7 @@ import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer
 
 let camera, scene, rendererCSS3D, rendererWebGL;
 let controls;
+let iframe;
 
 /**
  * Atari ST-like RAL 7038 coloured matt plastic material
@@ -137,11 +138,10 @@ async function init() {
     });
 
     // Add screen content (Hatari) using CSS3D
-    const iframe = document.createElement("iframe");
+    iframe = document.createElement("iframe");
     iframe.style.width = `${screenSize.width}px`;
     iframe.style.height = `${screenSize.height}px`;
     iframe.style.border = "0px";
-    iframe.style.pointerEvents = "auto";
     iframe.style.backfaceVisibility = "hidden";
     iframe.src = "./hatari/";
     const screen = new CSS3DObject(iframe);
@@ -293,8 +293,14 @@ async function init() {
     controls.enableDamping = true;
     controls.enabled = false;
     controls.connect(controlsDiv);
-    controls.addEventListener("start", () => controlsDiv.style.cursor = "grabbing");
-    controls.addEventListener("end", () => controlsDiv.style.cursor = "grab");
+    controls.addEventListener("start", () => {
+      controlsDiv.style.cursor = "grabbing";
+      iframe.style.pointerEvents = "none";
+    });
+    controls.addEventListener("end", () => {
+      controlsDiv.style.cursor = "grab";
+      iframe.style.pointerEvents = "auto";
+    });
   }
 
   window.addEventListener("resize", resizeHandler);
