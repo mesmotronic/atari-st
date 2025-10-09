@@ -127,7 +127,7 @@ Module["arguments"] = [
   "--machine", "ste",
   "--statusbar", "false",
   "--memsize", "4",
-  "--cpuclock", "16",
+  "--cpuclock", "8",
 ];
 var arguments_ = [];
 var thisProgram = "./this.program";
