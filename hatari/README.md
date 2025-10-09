@@ -2,6 +2,8 @@
 
 This folder contains a custom WASM build of the Hatari ST emulator compiled using emscripten.
 
+## Build your own
+
 Exact requirements may vary depending on your system, but if you'd like to build your own version, here's how:
 
 1. Download and install [emscripten](https://emscripten.org/docs/getting_started/downloads.html)
@@ -21,3 +23,14 @@ emmake make -j$(sysctl -n hw.ncpu)
 ```
 
 For users on Windows, please refer to [emscripten](https://emscripten.org/docs/getting_started/downloads.html) website.
+
+### Notes
+
+If you see the following error:
+
+```bash
+error: macro name must be an identifier
+    2 | #define -sUSE_SDL 2
+```
+
+Delete `-D-sUSE_SDL=2` from the `C_DEFINES` line in `build/src/CMakeFiles/hatari.dir/flags.make`

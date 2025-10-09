@@ -189,6 +189,7 @@ Module["arguments"] = [
   "-d", "/share/hatari/fs/",
   "--machine", "ste",
   "--statusbar", "false",
+  "--memory-size", "4",
 ];
 var moduleOverrides = Object.assign({}, Module);
 var arguments_ = [];
