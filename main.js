@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 import { gsap } from "gsap";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -7,7 +7,7 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
 
-let camera, scene, rendererCSS3D, rendererWebGL;
+let camera, scene, rendererCSS3D, rendererWebGPU;
 let controls;
 let iframe;
 
@@ -43,14 +43,14 @@ function resizeHandler() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
-  rendererWebGL.setSize(window.innerWidth, window.innerHeight);
+  rendererWebGPU.setSize(window.innerWidth, window.innerHeight);
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
   controls.update();
 
-  rendererWebGL.render(scene, camera);
+  rendererWebGPU.render(scene, camera);
   rendererCSS3D.render(scene, camera);
 }
 
@@ -80,18 +80,18 @@ async function init() {
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererCSS3D.domElement);
 
-  rendererWebGL = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
-  rendererWebGL.colorSpace = THREE.SRGBColorSpace;
-  rendererWebGL.domElement.style.position = "absolute";
-  rendererWebGL.domElement.style.top = "0";
-  rendererWebGL.domElement.style.zIndex = "2";
-  rendererWebGL.domElement.style.pointerEvents = "none";
-  rendererWebGL.shadowMap.enabled = true;
-  rendererWebGL.shadowMap.type = THREE.PCFSoftShadowMap;
-  rendererWebGL.toneMapping = THREE.NeutralToneMapping;
-  rendererWebGL.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  rendererWebGL.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(rendererWebGL.domElement);
+  rendererWebGPU = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+  rendererWebGPU.colorSpace = THREE.SRGBColorSpace;
+  rendererWebGPU.domElement.style.position = "absolute";
+  rendererWebGPU.domElement.style.top = "0";
+  rendererWebGPU.domElement.style.zIndex = "2";
+  rendererWebGPU.domElement.style.pointerEvents = "none";
+  rendererWebGPU.shadowMap.enabled = true;
+  rendererWebGPU.shadowMap.type = THREE.PCFSoftShadowMap;
+  rendererWebGPU.toneMapping = THREE.NeutralToneMapping;
+  rendererWebGPU.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  rendererWebGPU.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(rendererWebGPU.domElement);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
   camera.position.set(-500, 300, 2000);
@@ -306,7 +306,7 @@ async function init() {
   window.addEventListener("resize", resizeHandler);
   resizeHandler();
 
-  rendererWebGL.setAnimationLoop(animate);
+  rendererWebGPU.setAnimationLoop(animate);
 
   // Let's go!
   gsap.from(camera.position, {

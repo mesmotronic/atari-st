@@ -34,13 +34,15 @@
     </p>
   </div>
   <script type="importmap">
-    {
-      "imports": {
-        "gsap": "https://esm.sh/gsap",
-        "three": "https://esm.sh/three",
-        "three/addons/": "https://esm.sh/three/examples/jsm/"
-      }
+  {
+    "imports": {
+      "gsap": "https://esm.sh/gsap",
+      "three": "https://esm.sh/three@0.181.0/build/three.webgpu.js",
+      "three/webgpu": "https://esm.sh/three@0.181.0/build/three.webgpu.js",
+      "three/tsl": "https://esm.sh/three@0.181.0/build/three.webgpu.js",
+      "three/addons/": "https://esm.sh/three@0.181.0/examples/jsm/"
     }
+  }
   </script>
   <script type="module" src="main.js"></script>
   <script src="posthog.js"></script>
