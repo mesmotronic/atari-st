@@ -6,8 +6,10 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
+import Stats from "three/addons/libs/stats.module.js";
 
 let camera, scene, rendererCSS3D, rendererWebGPU;
+let stats;
 let controls;
 let iframe;
 
@@ -48,10 +50,11 @@ function resizeHandler() {
 }
 
 function animate() {
+  stats.begin();
   controls.update();
-
   rendererWebGPU.render(scene, camera);
   rendererCSS3D.render(scene, camera);
+  stats.end();
 }
 
 function applyAtariMaterial(parent) {
@@ -72,6 +75,14 @@ function enableShadows(parent) {
 }
 
 async function init() {
+  // Add Stats
+  stats = new Stats();
+  stats.dom.style.position = "absolute";
+  stats.dom.style.top = "0";
+  stats.dom.style.left = "0";
+  stats.dom.style.zIndex = "10";
+  document.body.appendChild(stats.dom);
+
   rendererCSS3D = new CSS3DRenderer();
   rendererCSS3D.domElement.style.position = "absolute";
   rendererCSS3D.domElement.style.top = "0";
@@ -80,7 +91,7 @@ async function init() {
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererCSS3D.domElement);
 
-  rendererWebGPU = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+  rendererWebGPU = new THREE.WebGPURenderer({ antialias: false, alpha: true, logarithmicDepthBuffer: true });
   rendererWebGPU.colorSpace = THREE.SRGBColorSpace;
   rendererWebGPU.domElement.style.position = "absolute";
   rendererWebGPU.domElement.style.top = "0";
