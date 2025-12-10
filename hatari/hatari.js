@@ -77,6 +77,7 @@ Module["expectedDataFileDownloads"]++;
       Module["FS_createPath"]("/", "share", true, true);
       Module["FS_createPath"]("/share", "hatari", true, true);
       Module["FS_createPath"]("/share/hatari", "fs", true, true);
+      Module["FS_createPath"]("/share/hatari/fs", "PONGWARS", true, true);
       Module["FS_createPath"]("/share/hatari/fs", "STDOOM", true, true);
       for (var file of metadata["files"]) {
         var name = file["filename"];
@@ -110,15 +111,19 @@ Module["expectedDataFileDownloads"]++;
   }
   loadPackage({
     files: [
-      { filename: "/share/hatari/fs/HATARI19.PRG", start: 0, end: 26692 },
-      { filename: "/share/hatari/fs/HATARI22.PRG", start: 26692, end: 60396 },
-      { filename: "/share/hatari/fs/HATARI23.PRG", start: 60396, end: 123116 },
-      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 123116, end: 4319136 },
-      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4319136, end: 5028587 },
-      { filename: "/share/hatari/hatari.cfg", start: 5028587, end: 5028783 },
-      { filename: "/share/hatari/tos.img", start: 5028783, end: 5553071 },
+      { filename: "/share/hatari/.DS_Store", start: 0, end: 8196 },
+      { filename: "/share/hatari/fs/.DS_Store", start: 8196, end: 14344 },
+      { filename: "/share/hatari/fs/HATARI19.PRG", start: 14344, end: 41036 },
+      { filename: "/share/hatari/fs/HATARI22.PRG", start: 41036, end: 74740 },
+      { filename: "/share/hatari/fs/HATARI23.PRG", start: 74740, end: 137460 },
+      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.PI1", start: 137460, end: 169494 },
+      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.TOS", start: 169494, end: 287241 },
+      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 287241, end: 4483261 },
+      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4483261, end: 5192712 },
+      { filename: "/share/hatari/hatari.cfg", start: 5192712, end: 5192908 },
+      { filename: "/share/hatari/tos.img", start: 5192908, end: 5717196 },
     ],
-    remote_package_size: 5553071,
+    remote_package_size: 5717196,
   });
 })();
 Module["arguments"] = [
@@ -127,7 +132,7 @@ Module["arguments"] = [
   "--machine", "ste",
   "--statusbar", "false",
   "--memsize", "4",
-  "--cpuclock", "8",
+  "--cpuclock", "16",
 ];
 var arguments_ = [];
 var thisProgram = "./this.program";
@@ -175,7 +180,7 @@ if (ENVIRONMENT_IS_NODE) {
 } else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   try {
     scriptDirectory = new URL(".", _scriptName).href;
-  } catch {}
+  } catch { }
   {
     if (ENVIRONMENT_IS_WORKER) {
       readBinary = (url) => {
@@ -251,7 +256,7 @@ function initRuntime() {
   wasmExports["ge"]();
   FS.ignorePermissions = false;
 }
-function preMain() {}
+function preMain() { }
 function postRun() {
   if (Module["postRun"]) {
     if (typeof Module["postRun"] == "function") Module["postRun"] = [Module["postRun"]];
@@ -288,7 +293,7 @@ async function getWasmBinary(binaryFile) {
     try {
       var response = await readAsync(binaryFile);
       return new Uint8Array(response);
-    } catch {}
+    } catch { }
   }
   return getBinarySync(binaryFile);
 }
@@ -672,8 +677,8 @@ var FS_stdin_getChar = () => {
 };
 var TTY = {
   ttys: [],
-  init() {},
-  shutdown() {},
+  init() { },
+  shutdown() { },
   register(dev, ops) {
     TTY.ttys[dev] = { input: [], output: [], ops };
     FS.registerDevice(dev, TTY.stream_ops);
@@ -936,7 +941,7 @@ var MEMFS = {
       var new_node;
       try {
         new_node = FS.lookupNode(new_dir, new_name);
-      } catch (e) {}
+      } catch (e) { }
       if (new_node) {
         if (FS.isDir(old_node.mode)) {
           for (var i in new_node.contents) {
@@ -1396,7 +1401,7 @@ var FS = {
     try {
       var node = FS.lookupNode(dir, name);
       return 20;
-    } catch (e) {}
+    } catch (e) { }
     return FS.nodePermissions(dir, "wx");
   },
   mayDelete(dir, name, isdir) {
@@ -1721,7 +1726,7 @@ var FS = {
     var new_node;
     try {
       new_node = FS.lookupNode(new_dir, new_name);
-    } catch (e) {}
+    } catch (e) { }
     if (old_node === new_node) {
       return;
     }
@@ -2264,7 +2269,7 @@ var FS = {
     try {
       var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
       path = lookup.path;
-    } catch (e) {}
+    } catch (e) { }
     var ret = {
       isRoot: false,
       exists: false,
@@ -3010,13 +3015,13 @@ var SOCKFS = {
       if (sock.server) {
         try {
           sock.server.close();
-        } catch (e) {}
+        } catch (e) { }
         sock.server = null;
       }
       for (var peer of Object.values(sock.peers)) {
         try {
           peer.socket.close();
-        } catch (e) {}
+        } catch (e) { }
         SOCKFS.websocket_sock_ops.removePeer(sock, peer);
       }
       return 0;
@@ -4168,7 +4173,7 @@ var Browser = {
       document["mozCancelFullScreen"] ||
       document["msExitFullscreen"] ||
       document["webkitCancelFullScreen"] ||
-      (() => {});
+      (() => { });
     CFS.apply(document, []);
     return true;
   },
@@ -4372,7 +4377,7 @@ var EGL = {
       return 0;
     }
     if (attribList) {
-      for (;;) {
+      for (; ;) {
         var param = HEAP32[attribList >> 2];
         if (param == 12321) {
           var alphaSize = HEAP32[(attribList + 4) >> 2];
@@ -4624,7 +4629,7 @@ var _eglCreateContext = (display, config, hmm, contextAttribs) => {
     return 0;
   }
   var glesContextVersion = 1;
-  for (;;) {
+  for (; ;) {
     var param = HEAP32[contextAttribs >> 2];
     if (param == 12440) {
       glesContextVersion = HEAP32[(contextAttribs + 4) >> 2];
@@ -6507,7 +6512,7 @@ var _glReadPixels = (x, y, width, height, format, type, pixels) => {
   GLctx.readPixels(x, y, width, height, format, type, pixelData);
 };
 var _emscripten_glReadPixels = _glReadPixels;
-var _glReleaseShaderCompiler = () => {};
+var _glReleaseShaderCompiler = () => { };
 var _emscripten_glReleaseShaderCompiler = _glReleaseShaderCompiler;
 var _glRenderbufferStorage = (x0, x1, x2, x3) => GLctx.renderbufferStorage(x0, x1, x2, x3);
 var _emscripten_glRenderbufferStorage = _glRenderbufferStorage;
@@ -7930,7 +7935,7 @@ var ASM_CONSTS = {
       SDL2.capture.scriptProcessorNode.connect(SDL2.audioContext.destination);
       SDL2.capture.stream = stream;
     };
-    var no_microphone = function (error) {};
+    var no_microphone = function (error) { };
     SDL2.capture.silenceBuffer = SDL2.audioContext.createBuffer($0, $1, SDL2.audioContext.sampleRate);
     SDL2.capture.silenceBuffer.getChannelData(0).fill(0);
     var silence_callback = function () {
@@ -8034,7 +8039,7 @@ var ASM_CONSTS = {
         }
       }
       if (SDL2.capture.scriptProcessorNode !== undefined) {
-        SDL2.capture.scriptProcessorNode.onaudioprocess = function (audioProcessingEvent) {};
+        SDL2.capture.scriptProcessorNode.onaudioprocess = function (audioProcessingEvent) { };
         SDL2.capture.scriptProcessorNode.disconnect();
       }
       if (SDL2.capture.mediaStreamNode !== undefined) {
