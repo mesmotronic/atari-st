@@ -117,13 +117,13 @@ Module["expectedDataFileDownloads"]++;
       { filename: "/share/hatari/fs/HATARI22.PRG", start: 41036, end: 74740 },
       { filename: "/share/hatari/fs/HATARI23.PRG", start: 74740, end: 137460 },
       { filename: "/share/hatari/fs/PONGWARS/PONGWARS.PI1", start: 137460, end: 169494 },
-      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.TOS", start: 169494, end: 287241 },
-      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 287241, end: 4483261 },
-      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4483261, end: 5192712 },
-      { filename: "/share/hatari/hatari.cfg", start: 5192712, end: 5192908 },
-      { filename: "/share/hatari/tos.img", start: 5192908, end: 5717196 },
+      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.TOS", start: 169494, end: 287225 },
+      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 287225, end: 4483245 },
+      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4483245, end: 5192696 },
+      { filename: "/share/hatari/hatari.cfg", start: 5192696, end: 5192892 },
+      { filename: "/share/hatari/tos.img", start: 5192892, end: 5717180 },
     ],
-    remote_package_size: 5717196,
+    remote_package_size: 5717180,
   });
 })();
 Module["arguments"] = [
