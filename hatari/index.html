@@ -32,6 +32,15 @@
   <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1" width="832" height="588"></canvas>
 
   <script>
+    var args = [
+      "--desktop", "false",
+      // "-d", "/share/hatari/fs/", // Set in hatari.js
+      "--machine", "megaste",
+      "--statusbar", "true",
+      "--memsize", "4",
+      "--cpuclock", "16",
+    ];
+
     var Module = {
       preRun: [],
       postRun: [],
@@ -47,6 +56,19 @@
             : "All downloads complete."
           );
       },
+
+      // Accessors to prevent custom arguments being overwritten by Module["arguments"] in hatari.js (line 130-ish)
+      get arguments() {
+        return args;
+      },
+      set arguments(value) {
+        for (let i = 0; i < value.length; i += 2) {
+          if (args.indexOf(value[i]) === -1) {
+            args.push(value[i], value[i + 1]);
+          }
+          console.log(args);
+        }
+      }
     };
 
     Module.setStatus("Downloading...");

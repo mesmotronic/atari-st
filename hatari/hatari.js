@@ -77,6 +77,7 @@ Module["expectedDataFileDownloads"]++;
       Module["FS_createPath"]("/", "share", true, true);
       Module["FS_createPath"]("/share", "hatari", true, true);
       Module["FS_createPath"]("/share/hatari", "fs", true, true);
+      Module["FS_createPath"]("/share/hatari/fs", "PLASMA", true, true);
       Module["FS_createPath"]("/share/hatari/fs", "PONGWARS", true, true);
       Module["FS_createPath"]("/share/hatari/fs", "STDOOM", true, true);
       for (var file of metadata["files"]) {
@@ -116,24 +117,19 @@ Module["expectedDataFileDownloads"]++;
       { filename: "/share/hatari/fs/HATARI19.PRG", start: 14344, end: 41036 },
       { filename: "/share/hatari/fs/HATARI22.PRG", start: 41036, end: 74740 },
       { filename: "/share/hatari/fs/HATARI23.PRG", start: 74740, end: 137460 },
-      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.PI1", start: 137460, end: 169494 },
-      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.TOS", start: 169494, end: 287225 },
-      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 287225, end: 4483245 },
-      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4483245, end: 5192696 },
-      { filename: "/share/hatari/hatari.cfg", start: 5192696, end: 5192892 },
-      { filename: "/share/hatari/tos.img", start: 5192892, end: 5717180 },
+      { filename: "/share/hatari/fs/PLASMA/PLASMA1.TOS", start: 137460, end: 144906 },
+      { filename: "/share/hatari/fs/PLASMA/PLASMA2.TOS", start: 144906, end: 457367 },
+      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.PI1", start: 457367, end: 489401 },
+      { filename: "/share/hatari/fs/PONGWARS/PONGWARS.TOS", start: 489401, end: 607132 },
+      { filename: "/share/hatari/fs/STDOOM/doom1.wad", start: 607132, end: 4803152 },
+      { filename: "/share/hatari/fs/STDOOM/stdoom.tos", start: 4803152, end: 5512603 },
+      { filename: "/share/hatari/hatari.cfg", start: 5512603, end: 5512799 },
+      { filename: "/share/hatari/tos.img", start: 5512799, end: 6037087 },
     ],
-    remote_package_size: 5717180,
+    remote_package_size: 6037087,
   });
 })();
-Module["arguments"] = [
-  "--desktop", "false",
-  "-d", "/share/hatari/fs/",
-  "--machine", "ste",
-  "--statusbar", "false",
-  "--memsize", "4",
-  "--cpuclock", "16",
-];
+Module["arguments"] = ["--desktop", "false", "-d", "/share/hatari/fs/", "--machine", "ste"];
 var arguments_ = [];
 var thisProgram = "./this.program";
 var quit_ = (status, toThrow) => {
