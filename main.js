@@ -5,6 +5,7 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 
 let camera, scene, rendererCSS3D, rendererWebGL;
 let controls;
@@ -44,10 +45,10 @@ const SCREEN_Z = DESK_CZ + 150;
  */
 const atariMaterial = new THREE.MeshPhysicalMaterial({
   color: 0xafb0a8,
-  roughness: 0.6,
-  metalness: 0.1,
-  clearcoat: 0.5,
-  clearcoatRoughness: 0.4,
+  roughness: 0.35,
+  metalness: 0.05,
+  clearcoat: 0.15,
+  clearcoatRoughness: 0.5,
 });
 
 const gltfLoader = new GLTFLoader();
@@ -144,7 +145,9 @@ function animate() {
 function applyAtariMaterial(parent) {
   parent.traverse((child) => {
     if (child.isMesh) {
-      child.material = atariMaterial;
+      const m = atariMaterial.clone();
+      m.side = child.material?.side ?? THREE.FrontSide;
+      child.material = m;
     }
   });
 }
@@ -455,14 +458,14 @@ async function createPoster() {
   // Black background — no frame
   const matBoard = new THREE.Mesh(
     new THREE.PlaneGeometry(pW, pH), // rotated: height along Z, width along Y
-    new THREE.MeshPhongMaterial({ color: 0x111111 }),
+    new THREE.MeshStandardMaterial({ color: 0x111111 }),
   );
   matBoard.position.set(px, py, pz);
   matBoard.rotation.y = -Math.PI / 2;
   scene.add(matBoard);
 
   const map = await loadTexture("textures/atari.png");
-  const posterMat = new THREE.MeshPhongMaterial({ map, transparent: true });
+  const posterMat = new THREE.MeshStandardMaterial({ map, transparent: true });
   const poster = new THREE.Mesh(
     new THREE.PlaneGeometry(pW * 0.75, (pW * 1.2) * 0.75),
     posterMat,
@@ -1149,6 +1152,8 @@ async function init() {
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
 
+  RectAreaLightUniformsLib.init();
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111);
 
@@ -1207,6 +1212,15 @@ async function init() {
     mesh.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z);
     mesh.rotation.x = THREE.MathUtils.degToRad(-10);
     scene.add(mesh);
+
+    // Monitor glow — soft blue-white rect light matching screen face
+    const screenLight = new THREE.RectAreaLight(0xc8d8ff, 3.5, screenSize.width, screenSize.height);
+    screenLight.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z + 20);
+    screenLight.rotation.x = THREE.MathUtils.degToRad(-10);
+    // RectAreaLight emits in -Z local space; rotate 180° on Y to point toward +Z (toward the chair)
+    screenLight.rotation.y = Math.PI;
+    scene.add(screenLight);
+
   }
 
   // ── Atari ST ──────────────────────────────────────────────────────────────
@@ -1214,13 +1228,19 @@ async function init() {
     atariSt.rotation.set(0, THREE.MathUtils.degToRad(5), 0);
     atariSt.scale.set(7, 7, 7);
     atariSt.position.set(DESK_CX - 850, DESK_Y - 6, DESK_CZ + 750);
+    atariSt.traverse((child) => {
+      if (child.isMesh) {
+        child.geometry.deleteAttribute("color");
+        child.geometry.computeVertexNormals();
+      }
+    });
     applyAtariMaterial(atariSt);
     enableShadows(atariSt);
     scene.add(atariSt);
 
     return loadTexture("textures/badge.webp").then((badgeTexture) => {
       const badgeGeometry = new THREE.PlaneGeometry(37, 4);
-      const badgeMaterial = new THREE.MeshPhongMaterial({ map: badgeTexture, transparent: true });
+      const badgeMaterial = new THREE.MeshStandardMaterial({ map: badgeTexture, transparent: true, roughness: 0.6, metalness: 0 });
       const badgeMesh = new THREE.Mesh(badgeGeometry, badgeMaterial);
       badgeMesh.position.set(138.6, 21.5, 2.5);
       badgeMesh.rotation.x = -Math.PI / 2.35;
