@@ -212,12 +212,18 @@ function createRoom() {
   const skirtY = FLOOR_Y + skirtH / 2;
   const sb1 = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, skirtH, skirtD), skirtMat);
   sb1.position.set(ROOM_CX, skirtY, WALL_BACK_Z + skirtD / 2);
+  sb1.castShadow = true;
+  sb1.receiveShadow = true;
   group.add(sb1);
   const sb2 = new THREE.Mesh(new THREE.BoxGeometry(skirtD, skirtH, ROOM_D), skirtMat);
   sb2.position.set(WALL_LEFT_X + skirtD / 2, skirtY, ROOM_CZ);
+  sb2.castShadow = true;
+  sb2.receiveShadow = true;
   group.add(sb2);
   const sb3 = new THREE.Mesh(new THREE.BoxGeometry(skirtD, skirtH, ROOM_D), skirtMat);
   sb3.position.set(WALL_RIGHT_X - skirtD / 2, skirtY, ROOM_CZ);
+  sb3.castShadow = true;
+  sb3.receiveShadow = true;
   group.add(sb3);
 
   scene.add(group);
@@ -1214,7 +1220,7 @@ async function init() {
 
     return loadTexture("textures/badge.webp").then((badgeTexture) => {
       const badgeGeometry = new THREE.PlaneGeometry(37, 4);
-      const badgeMaterial = new THREE.MeshBasicMaterial({ map: badgeTexture, transparent: true });
+      const badgeMaterial = new THREE.MeshPhongMaterial({ map: badgeTexture, transparent: true });
       const badgeMesh = new THREE.Mesh(badgeGeometry, badgeMaterial);
       badgeMesh.position.set(138.6, 21.5, 2.5);
       badgeMesh.rotation.x = -Math.PI / 2.35;
@@ -1374,9 +1380,11 @@ async function init() {
       DESK_CX + 1500, 700, DESK_CZ + 5500,
       DESK_CX, -200, DESK_CZ,
       true,
-    ).then(() => {
+    );
+
+    setTimeout(() => {
       controls.enabled = true;
-    });
+    }, controls.smoothTime * 1000);
   }, 1000);
 }
 
