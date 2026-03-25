@@ -1213,6 +1213,39 @@ async function init() {
     mesh.rotation.x = THREE.MathUtils.degToRad(-10);
     scene.add(mesh);
 
+    // Power button — glowing disc on the monitor bezel (bottom-right)
+    const monitorX = DESK_CX + 100;
+    const monitorY = DESK_Y;
+    const monitorZ = DESK_CZ - 334 + 150;
+    const powerButtonMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(45.5, 42),
+      new THREE.MeshStandardMaterial({
+        // color: 0x29abe2,
+        // emissive: 0x29abe2,
+        color: 0x99ff99,
+        emissive: 0x99ff99,
+        emissiveIntensity: 0.8,
+        roughness: 0.4,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.0,
+      }),
+    );
+    // Front face of bezel, bottom-right — Z pushes it just proud of the bezel surface
+    powerButtonMesh.position.set(monitorX + 279, monitorY + 217.5, monitorZ + 402);
+    powerButtonMesh.rotation.x = THREE.MathUtils.degToRad(-10); // match screen tilt
+    powerButtonMesh.name = "powerButton";
+    scene.add(powerButtonMesh);
+
+    loadTexture("textures/fullscreen.png").then((iconTex) => {
+      const iconMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(45.5 * 0.75, 42 * 0.75),
+        new THREE.MeshBasicMaterial({ map: iconTex, transparent: true, depthWrite: false, opacity: 0.333 }),
+      );
+      iconMesh.position.z = 1; // just proud of the button face
+      powerButtonMesh.add(iconMesh);
+    });
+
     // Monitor glow — soft blue-white rect light matching screen face
     const screenLight = new THREE.RectAreaLight(0xc8d8ff, 3.5, screenSize.width, screenSize.height);
     screenLight.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z + 20);
@@ -1380,6 +1413,19 @@ async function init() {
     controlsDiv.addEventListener("pointerup", () => {
       controlsDiv.style.cursor = "grab";
       iframe.style.pointerEvents = "auto";
+    });
+
+    // Power button click — raycaster against the glow disc
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    controlsDiv.addEventListener("click", (e) => {
+      pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObject(scene.getObjectByName("powerButton"));
+      if (hits.length > 0) {
+        iframe.requestFullscreen?.() ?? iframe.webkitRequestFullscreen?.();
+      }
     });
   }
 
