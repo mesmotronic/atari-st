@@ -6,6 +6,7 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 let camera, scene, rendererCSS3D, rendererWebGL;
 let controls;
@@ -196,38 +197,42 @@ function createRoom() {
 
   // Floor planks
   const plankW = 375;
-  const plankColors = [0x6b4c35, 0x7a5a42];
   const plankCount = ROOM_W / plankW;
+  const plankGeo = new THREE.BoxGeometry(plankW - 4, 6, ROOM_D);
+  const plankMats = [
+    new THREE.MeshStandardMaterial({ color: 0x6b4c35, roughness: 0.82, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ color: 0x7a5a42, roughness: 0.82, metalness: 0 }),
+  ];
+  const plankCounts = [Math.ceil(plankCount / 2), Math.floor(plankCount / 2)];
+  const plankIMs = plankCounts.map((n, ci) => {
+    const im = new THREE.InstancedMesh(plankGeo, plankMats[ci], n);
+    im.receiveShadow = true;
+    return im;
+  });
+  const _plankMatrix = new THREE.Matrix4();
+  const _plankIdx = [0, 0];
   for (let i = 0; i < plankCount; i++) {
-    const c = plankColors[i % 2];
-    const plank = new THREE.Mesh(
-      new THREE.BoxGeometry(plankW - 4, 6, ROOM_D),
-      new THREE.MeshStandardMaterial({ color: c, roughness: 0.82, metalness: 0 }),
-    );
-    plank.position.set(WALL_LEFT_X + plankW * i + plankW / 2, FLOOR_Y + 3, ROOM_CZ);
-    plank.receiveShadow = true;
-    group.add(plank);
+    const ci = i % 2;
+    _plankMatrix.makeTranslation(WALL_LEFT_X + plankW * i + plankW / 2, FLOOR_Y + 3, ROOM_CZ);
+    plankIMs[ci].setMatrixAt(_plankIdx[ci]++, _plankMatrix);
   }
+  plankIMs.forEach(im => group.add(im));
 
-  // Skirting boards
+  // Skirting boards — merged into one draw call
   const skirtH = 80;
   const skirtD = 18;
   const skirtY = FLOOR_Y + skirtH / 2;
-  const sb1 = new THREE.Mesh(new THREE.BoxGeometry(ROOM_W, skirtH, skirtD), skirtMat);
-  sb1.position.set(ROOM_CX, skirtY, WALL_BACK_Z + skirtD / 2);
-  sb1.castShadow = true;
-  sb1.receiveShadow = true;
-  group.add(sb1);
-  const sb2 = new THREE.Mesh(new THREE.BoxGeometry(skirtD, skirtH, ROOM_D), skirtMat);
-  sb2.position.set(WALL_LEFT_X + skirtD / 2, skirtY, ROOM_CZ);
-  sb2.castShadow = true;
-  sb2.receiveShadow = true;
-  group.add(sb2);
-  const sb3 = new THREE.Mesh(new THREE.BoxGeometry(skirtD, skirtH, ROOM_D), skirtMat);
-  sb3.position.set(WALL_RIGHT_X - skirtD / 2, skirtY, ROOM_CZ);
-  sb3.castShadow = true;
-  sb3.receiveShadow = true;
-  group.add(sb3);
+  const skirtGeos = [
+    (() => { const g = new THREE.BoxGeometry(ROOM_W, skirtH, skirtD); g.translate(ROOM_CX, skirtY, WALL_BACK_Z + skirtD / 2); return g; })(),
+    (() => { const g = new THREE.BoxGeometry(skirtD, skirtH, ROOM_D); g.translate(WALL_LEFT_X + skirtD / 2, skirtY, ROOM_CZ); return g; })(),
+    (() => { const g = new THREE.BoxGeometry(skirtD, skirtH, ROOM_D); g.translate(WALL_RIGHT_X - skirtD / 2, skirtY, ROOM_CZ); return g; })(),
+  ];
+  const skirtMerged = mergeGeometries(skirtGeos);
+  skirtGeos.forEach(g => g.dispose());
+  const skirtMesh = new THREE.Mesh(skirtMerged, skirtMat);
+  skirtMesh.castShadow = true;
+  skirtMesh.receiveShadow = true;
+  group.add(skirtMesh);
 
   scene.add(group);
 }
@@ -257,19 +262,21 @@ function createWindow() {
     [30, wH, 40, 0, wy, fZ + 10],
     [wW, 30, 40, 0, wy + 100, fZ + 10],
   ];
-  for (const [fw, fh, fd, fx, fy, fz] of frameParts) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(fw, fh, fd), frameMat);
-    m.position.set(fx, fy, fz);
-    m.castShadow = true;
-    winGroup.add(m);
-  }
+  const frameGeos = frameParts.map(([fw, fh, fd, fx, fy, fz]) => {
+    const g = new THREE.BoxGeometry(fw, fh, fd);
+    g.translate(fx, fy, fz);
+    return g;
+  });
+  const frameMerged = mergeGeometries(frameGeos);
+  frameGeos.forEach(g => g.dispose());
+  const frameMesh = new THREE.Mesh(frameMerged, frameMat);
+  frameMesh.castShadow = true;
+  winGroup.add(frameMesh);
 
   // Glass panes
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: 0x08161a,
     transmission: 0.95,
-    opacity: 1,
-    transparent: true,
     roughness: 0.05,
     metalness: 0,
     ior: 1.5,
@@ -278,12 +285,14 @@ function createWindow() {
   });
   const paneW = (wW - 30) / 2 - 10;
   const paneH = wH - 30;
-  const pane1 = new THREE.Mesh(new THREE.PlaneGeometry(paneW, paneH), glassMat);
-  pane1.position.set(-wW / 4 - 5, wy, fZ + 15);
-  winGroup.add(pane1);
-  const pane2 = new THREE.Mesh(new THREE.PlaneGeometry(paneW, paneH), glassMat);
-  pane2.position.set(wW / 4 + 5, wy, fZ + 15);
-  winGroup.add(pane2);
+  const paneGeos = [-wW / 4 - 5, wW / 4 + 5].map(px => {
+    const g = new THREE.PlaneGeometry(paneW, paneH);
+    g.translate(px, wy, fZ + 15);
+    return g;
+  });
+  const paneMerged = mergeGeometries(paneGeos);
+  paneGeos.forEach(g => g.dispose());
+  winGroup.add(new THREE.Mesh(paneMerged, glassMat));
 
   // Curtain rod — wide enough to hold curtains on either side, 50% thicker
   const curtainW = 560;
@@ -294,11 +303,12 @@ function createWindow() {
   rod.rotation.z = Math.PI / 2;
   rod.position.set(0, rodY, 60);
   winGroup.add(rod);
-  for (const side of [-1, 1]) {
-    const finial = new THREE.Mesh(new THREE.SphereGeometry(30, 10, 8), rodMat);
-    finial.position.set(side * (totalCurtainSpan / 2 + 10), rodY, 60);
-    winGroup.add(finial);
-  }
+  const finialIM = new THREE.InstancedMesh(new THREE.SphereGeometry(30, 10, 8), rodMat, 2);
+  const _finialMatrix = new THREE.Matrix4();
+  [-1, 1].forEach((side, idx) => {
+    finialIM.setMatrixAt(idx, _finialMatrix.makeTranslation(side * (totalCurtainSpan / 2 + 10), rodY, 60));
+  });
+  winGroup.add(finialIM);
 
   // Curtain panels — top at rod height, with static wave folds
   const curtainMat = new THREE.MeshStandardMaterial({
@@ -352,7 +362,8 @@ function createBookshelf() {
   const shelfDepth = 380;
   const shelfBaseY = FLOOR_Y + shelfFullH / 2;
 
-  // Panels
+  // Panels, back panel, and internal shelves — merged into one draw call
+  const shelfStructGeos = [];
   const panels = [
     [shelfW, 22, shelfDepth, shelfX, FLOOR_Y + shelfFullH - 11, shelfZ],
     [shelfW, 22, shelfDepth, shelfX, FLOOR_Y + 11, shelfZ],
@@ -361,18 +372,15 @@ function createBookshelf() {
     [22, shelfFullH, 22, shelfX - shelfW / 2 - 11, shelfBaseY, shelfZ + shelfDepth / 2 - 11],
   ];
   for (const [w, h, d, x, y, z] of panels) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), shelfMat);
-    m.position.set(x, y, z);
-    m.castShadow = true;
-    m.receiveShadow = true;
-    group.add(m);
+    const g = new THREE.BoxGeometry(w, h, d);
+    g.translate(x, y, z);
+    shelfStructGeos.push(g);
   }
 
   // Back panel
-  const back = new THREE.Mesh(new THREE.BoxGeometry(shelfW - 44, shelfFullH, 14), shelfMat);
-  back.position.set(shelfX, shelfBaseY, shelfZ - shelfDepth / 2 + 7);
-  back.receiveShadow = true;
-  group.add(back);
+  const backGeo = new THREE.BoxGeometry(shelfW - 44, shelfFullH, 14);
+  backGeo.translate(shelfX, shelfBaseY, shelfZ - shelfDepth / 2 + 7);
+  shelfStructGeos.push(backGeo);
 
   // Internal shelves
   const shelfCount = 5;
@@ -381,12 +389,17 @@ function createBookshelf() {
   for (let i = 1; i <= shelfCount; i++) {
     const sy = FLOOR_Y + shelfSpacing * i;
     shelfYPositions.push(sy);
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(shelfW - 44, 22, shelfDepth), shelfMat);
-    shelf.position.set(shelfX, sy, shelfZ);
-    shelf.castShadow = true;
-    shelf.receiveShadow = true;
-    group.add(shelf);
+    const g = new THREE.BoxGeometry(shelfW - 44, 22, shelfDepth);
+    g.translate(shelfX, sy, shelfZ);
+    shelfStructGeos.push(g);
   }
+
+  const shelfStructMerged = mergeGeometries(shelfStructGeos);
+  shelfStructGeos.forEach(g => g.dispose());
+  const shelfStructMesh = new THREE.Mesh(shelfStructMerged, shelfMat);
+  shelfStructMesh.castShadow = true;
+  shelfStructMesh.receiveShadow = true;
+  group.add(shelfStructMesh);
 
   // Books
   const bookColors = [
@@ -400,6 +413,10 @@ function createBookshelf() {
       return s / 233280;
     };
   })();
+
+  const bookGeos = [];
+  const _bookColor = new THREE.Color();
+  const _bookMatrix = new THREE.Matrix4();
 
   for (const sy of shelfYPositions) {
     let curX = shelfX - shelfW / 2 + 30;
@@ -415,35 +432,41 @@ function createBookshelf() {
           const fw = 80 + rng() * 60;
           const fh = 20 + rng() * 12;
           const fd = bD * (0.7 + rng() * 0.3);
-          const bk = new THREE.Mesh(
-            new THREE.BoxGeometry(fw, fh, fd),
-            new THREE.MeshStandardMaterial({
-              color: bookColors[Math.floor(rng() * bookColors.length)],
-              roughness: 0.85,
-            }),
-          );
-          bk.position.set(curX + fw / 2, sy + 11 + fh * (s + 0.5), shelfZ + (rng() - 0.5) * 20);
-          bk.receiveShadow = true;
-          bk.castShadow = true;
-          group.add(bk);
+          const geo = new THREE.BoxGeometry(fw, fh, fd);
+          _bookColor.setHex(bookColors[Math.floor(rng() * bookColors.length)]);
+          const flatColors = new Float32Array(geo.attributes.position.count * 3);
+          for (let v = 0; v < geo.attributes.position.count; v++) {
+            flatColors[v * 3] = _bookColor.r; flatColors[v * 3 + 1] = _bookColor.g; flatColors[v * 3 + 2] = _bookColor.b;
+          }
+          geo.setAttribute("color", new THREE.BufferAttribute(flatColors, 3));
+          _bookMatrix.makeTranslation(curX + fw / 2, sy + 11 + fh * (s + 0.5), shelfZ + (rng() - 0.5) * 20);
+          geo.applyMatrix4(_bookMatrix);
+          bookGeos.push(geo);
         }
         curX += 110 + rng() * 40;
         layFlat = false;
       } else {
         const tilt = (rng() - 0.5) * 0.22;
-        const bk = new THREE.Mesh(
-          new THREE.BoxGeometry(bW, bH, bD),
-          new THREE.MeshStandardMaterial({ color: bookColors[Math.floor(rng() * bookColors.length)], roughness: 0.85 }),
-        );
-        bk.position.set(curX + bW / 2, sy + 11 + (bH / 2) * Math.cos(tilt), shelfZ + (rng() - 0.5) * 20);
-        bk.rotation.z = tilt;
-        bk.castShadow = true;
-        bk.receiveShadow = true;
-        group.add(bk);
+        const geo = new THREE.BoxGeometry(bW, bH, bD);
+        _bookColor.setHex(bookColors[Math.floor(rng() * bookColors.length)]);
+        const flatColors = new Float32Array(geo.attributes.position.count * 3);
+        for (let v = 0; v < geo.attributes.position.count; v++) {
+          flatColors[v * 3] = _bookColor.r; flatColors[v * 3 + 1] = _bookColor.g; flatColors[v * 3 + 2] = _bookColor.b;
+        }
+        geo.setAttribute("color", new THREE.BufferAttribute(flatColors, 3));
+        _bookMatrix.makeRotationZ(tilt).setPosition(curX + bW / 2, sy + 11 + (bH / 2) * Math.cos(tilt), shelfZ + (rng() - 0.5) * 20);
+        geo.applyMatrix4(_bookMatrix);
+        bookGeos.push(geo);
         curX += bW + 4 + rng() * 10;
       }
     }
   }
+
+  const bookMerged = mergeGeometries(bookGeos);
+  bookGeos.forEach(g => g.dispose());
+  const bookMesh = new THREE.Mesh(bookMerged, new THREE.MeshStandardMaterial({ roughness: 0.85, vertexColors: true }));
+  bookMesh.receiveShadow = true;
+  group.add(bookMesh);
 
   scene.add(group);
 }
@@ -484,38 +507,39 @@ function createRug() {
   const sofaCX = WALL_RIGHT_X - 620 * 0.75 - 40;
   const rugCX = sofaCX - 2000; // in front of the sofa
   const rugCZ = 500 + WORLD_SHIFT_Z; // match sofa Z
-  const layers = [
+  // Rug layers + medallions — merged per colour into 2 draw calls
+  const _rugRot = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
+  const rugGeosA = []; // 0xa03a22
+  const rugGeosB = []; // 0xc4793a
+  for (const { s, y, color } of [
     { s: 3000, y: rugY, color: 0xa03a22 },
     { s: 2800, y: rugY + 2, color: 0xc4793a },
     { s: 2500, y: rugY + 4, color: 0xa03a22 },
     { s: 1800, y: rugY + 6, color: 0xc4793a },
-  ];
-  for (const { s, y, color } of layers) {
-    const rug = new THREE.Mesh(
-      new THREE.PlaneGeometry(s, s),
-      new THREE.MeshStandardMaterial({ color, roughness: 0.95, metalness: 0 }),
-    );
-    rug.rotation.x = -Math.PI / 2;
-    rug.position.set(rugCX, y, rugCZ);
-    rug.receiveShadow = true;
-    group.add(rug);
+  ]) {
+    const g = new THREE.PlaneGeometry(s, s);
+    g.applyMatrix4(_rugRot);
+    g.translate(rugCX, y, rugCZ);
+    (color === 0xa03a22 ? rugGeosA : rugGeosB).push(g);
   }
+  // Medallions share the same colours
+  const mOuter = new THREE.CircleGeometry(480, 48);
+  mOuter.applyMatrix4(_rugRot); mOuter.translate(rugCX, rugY + 7, rugCZ);
+  rugGeosB.push(mOuter);
+  const mInner = new THREE.CircleGeometry(320, 48);
+  mInner.applyMatrix4(_rugRot); mInner.translate(rugCX, rugY + 8, rugCZ);
+  rugGeosA.push(mInner);
 
-  const medallion = new THREE.Mesh(
-    new THREE.CircleGeometry(480, 48),
-    new THREE.MeshStandardMaterial({ color: 0xc4793a, roughness: 0.95 }),
-  );
-  medallion.rotation.x = -Math.PI / 2;
-  medallion.position.set(rugCX, rugY + 7, rugCZ);
-  group.add(medallion);
-
-  const medallionInner = new THREE.Mesh(
-    new THREE.CircleGeometry(320, 48),
-    new THREE.MeshStandardMaterial({ color: 0xa03a22, roughness: 0.95 }),
-  );
-  medallionInner.rotation.x = -Math.PI / 2;
-  medallionInner.position.set(rugCX, rugY + 8, rugCZ);
-  group.add(medallionInner);
+  const rugMatA = new THREE.MeshStandardMaterial({ color: 0xa03a22, roughness: 0.95, metalness: 0 });
+  const rugMatB = new THREE.MeshStandardMaterial({ color: 0xc4793a, roughness: 0.95, metalness: 0 });
+  const rugMeshA = new THREE.Mesh(mergeGeometries(rugGeosA), rugMatA);
+  rugMeshA.receiveShadow = true;
+  rugGeosA.forEach(g => g.dispose());
+  group.add(rugMeshA);
+  const rugMeshB = new THREE.Mesh(mergeGeometries(rugGeosB), rugMatB);
+  rugMeshB.receiveShadow = true;
+  rugGeosB.forEach(g => g.dispose());
+  group.add(rugMeshB);
 
   scene.add(group);
 }
@@ -612,19 +636,16 @@ function createSofa() {
   const frameMat = new THREE.MeshStandardMaterial({ color: 0x3d2010, roughness: 0.65, metalness: 0 });
   const pillowColors = [0xc4a882, 0xa07858, 0xd4b896];
 
-  // Legs — visible, below the base
+  // Legs — InstancedMesh
   const legGeo = new THREE.CylinderGeometry(24, 20, legH, 12);
-  for (const [lx, lz] of [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ]) {
-    const leg = new THREE.Mesh(legGeo, frameMat);
-    leg.position.set(lx * (sofaW / 2 - 80), legH / 2, lz * (sofaD / 2 - 60));
-    leg.castShadow = true;
-    sofaGroup.add(leg);
-  }
+  const legIM = new THREE.InstancedMesh(legGeo, frameMat, 4);
+  legIM.castShadow = true;
+  sofaGroup.add(legIM);
+  const _legMatrix = new THREE.Matrix4();
+  [ [-1, -1], [1, -1], [-1, 1], [1, 1] ].forEach(([lx, lz], idx) => {
+    _legMatrix.makeTranslation(lx * (sofaW / 2 - 80), legH / 2, lz * (sofaD / 2 - 60));
+    legIM.setMatrixAt(idx, _legMatrix);
+  });
 
   // Base / frame — raised above legs
   const base = new THREE.Mesh(new THREE.BoxGeometry(sofaW, baseH, sofaD), frameMat);
@@ -754,17 +775,25 @@ function createFilingCabinet() {
 
   const drawerCount = 3;
   const drawerH = (cabinetH - 60) / drawerCount - 12;
+  const drawerGeos = [];
+  const handleGeos = [];
+  const _handleRot = new THREE.Matrix4().makeRotationZ(Math.PI / 2);
   for (let i = 0; i < drawerCount; i++) {
     const dy = FLOOR_Y + 30 + drawerH / 2 + i * (drawerH + 12);
-    const drawer = new THREE.Mesh(new THREE.BoxGeometry(cabinetW - 10, drawerH, 22), drawerMat);
-    drawer.position.set(fx, dy, fz + cabinetD / 2 + 4);
-    group.add(drawer);
-
-    const dHandle = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 90, 10), chromeMat);
-    dHandle.rotation.z = Math.PI / 2;
-    dHandle.position.set(fx, dy, fz + cabinetD / 2 + 18);
-    group.add(dHandle);
+    const dg = new THREE.BoxGeometry(cabinetW - 10, drawerH, 22);
+    dg.translate(fx, dy, fz + cabinetD / 2 + 4);
+    drawerGeos.push(dg);
+    const hg = new THREE.CylinderGeometry(7, 7, 90, 10);
+    hg.applyMatrix4(_handleRot);
+    hg.translate(fx, dy, fz + cabinetD / 2 + 18);
+    handleGeos.push(hg);
   }
+  const drawerMerged = mergeGeometries(drawerGeos);
+  drawerGeos.forEach(g => g.dispose());
+  group.add(new THREE.Mesh(drawerMerged, drawerMat));
+  const handleMerged = mergeGeometries(handleGeos);
+  handleGeos.forEach(g => g.dispose());
+  group.add(new THREE.Mesh(handleMerged, chromeMat));
 
   const topSurf = new THREE.Mesh(new THREE.BoxGeometry(cabinetW, 16, cabinetD), bodyMat);
   topSurf.position.set(fx, FLOOR_Y + cabinetH + 8, fz);
@@ -802,16 +831,25 @@ function createWallClock() {
   group.add(rim);
 
   // Hour markers — 12 o'clock is at top (+Y), going clockwise when viewed from -X
+  const mr = radius - 28;
+  const largeMarkerIM = new THREE.InstancedMesh(new THREE.BoxGeometry(10, 45, 8), markerMat, 4);
+  const smallMarkerIM = new THREE.InstancedMesh(new THREE.BoxGeometry(6, 28, 8), markerMat, 8);
+  const _markerMatrix = new THREE.Matrix4();
+  const _markerQ = new THREE.Quaternion();
+  const _markerPos = new THREE.Vector3();
+  const _markerScale = new THREE.Vector3(1, 1, 1);
+  const _xAxis = new THREE.Vector3(1, 0, 0);
+  let largeIdx = 0, smallIdx = 0;
   for (let i = 0; i < 12; i++) {
     const angle = (i / 12) * Math.PI * 2;
-    const mr = radius - 28;
-    const markerGeo = i % 3 === 0 ? new THREE.BoxGeometry(10, 45, 8) : new THREE.BoxGeometry(6, 28, 8);
-    const marker = new THREE.Mesh(markerGeo, markerMat);
-    // 12 at top, 3 at -Z, 6 at bottom, 9 at +Z (clockwise from -X view)
-    marker.position.set(cx - 10, cy + Math.cos(angle) * mr, cz - Math.sin(angle) * mr);
-    marker.rotation.x = -angle;
-    group.add(marker);
+    _markerPos.set(cx - 10, cy + Math.cos(angle) * mr, cz - Math.sin(angle) * mr);
+    _markerQ.setFromAxisAngle(_xAxis, -angle);
+    _markerMatrix.compose(_markerPos, _markerQ, _markerScale);
+    if (i % 3 === 0) largeMarkerIM.setMatrixAt(largeIdx++, _markerMatrix);
+    else smallMarkerIM.setMatrixAt(smallIdx++, _markerMatrix);
   }
+  group.add(largeMarkerIM);
+  group.add(smallMarkerIM);
 
   // Clock hands — rotate around X axis
   // When viewed from -X: +Y is up (12), rotation.x positive goes from +Y toward -Z (clockwise)
@@ -1089,23 +1127,29 @@ function createOfficeChair() {
   gasCyl.castShadow = true;
   chairGroup.add(gasCyl);
 
-  // 5-star base — spokes radiate from center to casters
+  // 5-star base — spokes and casters as InstancedMesh
   const spokeLen = 360;
+  const spokeIM = new THREE.InstancedMesh(new THREE.BoxGeometry(spokeLen, baseArmH, 35), chromeMat, 5);
+  spokeIM.castShadow = true;
+  spokeIM.receiveShadow = true;
+  chairGroup.add(spokeIM);
+  const casterIM = new THREE.InstancedMesh(new THREE.CylinderGeometry(casterR, casterR, casterH, 16), blackMat, 5);
+  casterIM.castShadow = true;
+  casterIM.receiveShadow = true;
+  chairGroup.add(casterIM);
+  const _chairMatrix = new THREE.Matrix4();
+  const _chairQ = new THREE.Quaternion();
+  const _chairPos = new THREE.Vector3();
+  const _chairScale = new THREE.Vector3(1, 1, 1);
   for (let i = 0; i < 5; i++) {
     const angle = (i / 5) * Math.PI * 2;
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(spokeLen, baseArmH, 35), chromeMat);
-    arm.position.set(Math.sin(angle) * spokeLen / 2, baseY, Math.cos(angle) * spokeLen / 2);
-    arm.rotation.y = angle + Math.PI / 2;
-    arm.castShadow = true;
-    arm.receiveShadow = true;
-    chairGroup.add(arm);
+    _chairQ.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle + Math.PI / 2);
+    _chairPos.set(Math.sin(angle) * spokeLen / 2, baseY, Math.cos(angle) * spokeLen / 2);
+    spokeIM.setMatrixAt(i, _chairMatrix.compose(_chairPos, _chairQ, _chairScale));
 
-    const caster = new THREE.Mesh(new THREE.CylinderGeometry(casterR, casterR, casterH, 16), blackMat);
-    caster.rotation.z = Math.PI / 2;
-    caster.position.set(Math.sin(angle) * spokeLen, casterR, Math.cos(angle) * spokeLen);
-    caster.castShadow = true;
-    caster.receiveShadow = true;
-    chairGroup.add(caster);
+    _chairQ.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+    _chairPos.set(Math.sin(angle) * spokeLen, casterR, Math.cos(angle) * spokeLen);
+    casterIM.setMatrixAt(i, _chairMatrix.compose(_chairPos, _chairQ, _chairScale));
   }
 
   // Back support struts — connect seat pan to backrest
@@ -1220,8 +1264,6 @@ async function init() {
     const powerButtonMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(45.5, 42),
       new THREE.MeshStandardMaterial({
-        // color: 0x29abe2,
-        // emissive: 0x29abe2,
         color: 0x99ff99,
         emissive: 0x99ff99,
         emissiveIntensity: 0.8,
@@ -1363,13 +1405,14 @@ async function init() {
       clearcoatRoughness: 0.01,
       transmission: 0.0,
     });
-    for (const position of legPositions) {
-      const leg = new THREE.Mesh(legGeometry, legMaterial);
-      leg.position.set(...position);
-      leg.castShadow = true;
-      leg.receiveShadow = true;
-      scene.add(leg);
-    }
+    const deskLegIM = new THREE.InstancedMesh(legGeometry, legMaterial, legPositions.length);
+    deskLegIM.castShadow = true;
+    deskLegIM.receiveShadow = true;
+    const _deskLegMatrix = new THREE.Matrix4();
+    legPositions.forEach(([lx, ly, lz], idx) => {
+      deskLegIM.setMatrixAt(idx, _deskLegMatrix.makeTranslation(lx, ly, lz));
+    });
+    scene.add(deskLegIM);
 
     // ── Room shell (built after we know floor Y from desk legs) ──────────────
     createRoom();
