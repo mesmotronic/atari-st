@@ -1432,6 +1432,12 @@ async function init() {
   window.addEventListener("resize", resizeHandler);
   resizeHandler();
 
+  window.addEventListener("fullscreenchange", () => {
+    document.fullscreenElement === iframe
+      ? rendererWebGL.setAnimationLoop(null)
+      : rendererWebGL.setAnimationLoop(animate);
+  });
+
   rendererWebGL.setAnimationLoop(animate);
 
   // Intro camera fly-in

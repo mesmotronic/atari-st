@@ -20,11 +20,25 @@
       background-color: #000;
     }
 
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     canvas {
       border: 0 none;
       background-color: #000;
       cursor: none;
-      image-rendering: optimizeSpeed;
+      image-rendering: pixelated;
+    }
+
+    .fullscreen canvas {
+      aspect-ratio: 4 / 3;
+      width: 100%;
+      height: auto;
+      max-width: calc(100dvh * 4 / 3);
+      max-height: 100dvh;
     }
   </style>
 </head>
@@ -74,6 +88,18 @@
 
     Module.setStatus("Downloading...");
     window.onerror = (e) => Module.setStatus("Error: " + e);
+
+    // Apply letterbox/pillarbox when full screen/browser
+    if (window.self !== window.top) {
+      parent.document.addEventListener("fullscreenchange", event => {
+        parent.document.fullscreenElement === window.frameElement
+          ? document.documentElement.classList.add("fullscreen")
+          : document.documentElement.classList.remove("fullscreen")
+          ;
+      });
+    } else {
+      document.documentElement.classList.add("fullscreen");
+    }
   </script>
   <script async src="./hatari.js"></script>
 </body>
