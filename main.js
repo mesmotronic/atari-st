@@ -1,12 +1,12 @@
-import * as THREE from "three";
+import * as THREE from "three/webgpu";
 
 import CameraControls from "camera-controls";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer.js";
-import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { RectAreaLightTexturesLib } from "three/addons/lights/RectAreaLightTexturesLib.js";
 
 let camera, scene, rendererCSS3D, rendererWebGL;
 let controls;
@@ -50,6 +50,7 @@ const atariMaterial = new THREE.MeshPhysicalMaterial({
   metalness: 0.05,
   clearcoat: 0.15,
   clearcoatRoughness: 0.5,
+  vertexColors: false,
 });
 
 const gltfLoader = new GLTFLoader();
@@ -147,7 +148,6 @@ function applyAtariMaterial(parent) {
   parent.traverse((child) => {
     if (child.isMesh) {
       const m = atariMaterial.clone();
-      m.side = child.material?.side ?? THREE.FrontSide;
       child.material = m;
     }
   });
@@ -642,7 +642,7 @@ function createSofa() {
   legIM.castShadow = true;
   sofaGroup.add(legIM);
   const _legMatrix = new THREE.Matrix4();
-  [ [-1, -1], [1, -1], [-1, 1], [1, 1] ].forEach(([lx, lz], idx) => {
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([lx, lz], idx) => {
     _legMatrix.makeTranslation(lx * (sofaW / 2 - 80), legH / 2, lz * (sofaD / 2 - 60));
     legIM.setMatrixAt(idx, _legMatrix);
   });
@@ -1180,7 +1180,7 @@ async function init() {
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererCSS3D.domElement);
 
-  rendererWebGL = new THREE.WebGLRenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+  rendererWebGL = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
   rendererWebGL.colorSpace = THREE.SRGBColorSpace;
   rendererWebGL.domElement.style.position = "absolute";
   rendererWebGL.domElement.style.top = "0";
@@ -1193,10 +1193,9 @@ async function init() {
   rendererWebGL.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   rendererWebGL.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererWebGL.domElement);
+  THREE.RectAreaLightNode.setLTC(RectAreaLightTexturesLib.init());
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
-
-  RectAreaLightUniformsLib.init();
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x111111);
@@ -1305,7 +1304,6 @@ async function init() {
     atariSt.position.set(DESK_CX - 850, DESK_Y - 6, DESK_CZ + 750);
     atariSt.traverse((child) => {
       if (child.isMesh) {
-        child.geometry.deleteAttribute("color");
         child.geometry.computeVertexNormals();
       }
     });
