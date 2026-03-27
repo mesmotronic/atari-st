@@ -8,10 +8,13 @@ import { CSS3DObject, CSS3DRenderer } from "three/addons/renderers/CSS3DRenderer
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { RectAreaLightTexturesLib } from "three/addons/lights/RectAreaLightTexturesLib.js";
 
-let camera, scene, rendererCSS3D, rendererWebGL;
+let camera, scene, rendererCSS3D, rendererWebGPU;
 let controls;
 let iframe;
 let clock;
+let powerButtonMesh;
+let preFullscreenPosition = null;
+let preFullscreenTarget = null;
 
 // Animated objects
 let curtainLeft, curtainRight;
@@ -74,7 +77,7 @@ function resizeHandler() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
-  rendererWebGL.setSize(window.innerWidth, window.innerHeight);
+  rendererWebGPU.setSize(window.innerWidth, window.innerHeight);
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
 }
 
@@ -140,7 +143,7 @@ function animate() {
   animateClock();
   animateDustParticles(t);
 
-  rendererWebGL.render(scene, camera);
+  rendererWebGPU.render(scene, camera);
   rendererCSS3D.render(scene, camera);
 }
 
@@ -1180,19 +1183,19 @@ async function init() {
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererCSS3D.domElement);
 
-  rendererWebGL = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
-  rendererWebGL.colorSpace = THREE.SRGBColorSpace;
-  rendererWebGL.domElement.style.position = "absolute";
-  rendererWebGL.domElement.style.top = "0";
-  rendererWebGL.domElement.style.zIndex = "2";
-  rendererWebGL.domElement.style.pointerEvents = "none";
-  rendererWebGL.shadowMap.enabled = true;
-  rendererWebGL.shadowMap.type = THREE.PCFSoftShadowMap;
-  rendererWebGL.toneMapping = THREE.NeutralToneMapping;
-  rendererWebGL.toneMappingExposure = 1.4;
-  rendererWebGL.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  rendererWebGL.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(rendererWebGL.domElement);
+  rendererWebGPU = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
+  rendererWebGPU.colorSpace = THREE.SRGBColorSpace;
+  rendererWebGPU.domElement.style.position = "absolute";
+  rendererWebGPU.domElement.style.top = "0";
+  rendererWebGPU.domElement.style.zIndex = "2";
+  rendererWebGPU.domElement.style.pointerEvents = "none";
+  rendererWebGPU.shadowMap.enabled = true;
+  rendererWebGPU.shadowMap.type = THREE.PCFSoftShadowMap;
+  rendererWebGPU.toneMapping = THREE.NeutralToneMapping;
+  rendererWebGPU.toneMappingExposure = 1.4;
+  rendererWebGPU.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  rendererWebGPU.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(rendererWebGPU.domElement);
   THREE.RectAreaLightNode.setLTC(RectAreaLightTexturesLib.init());
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 100000);
@@ -1260,7 +1263,7 @@ async function init() {
     const monitorX = DESK_CX + 100;
     const monitorY = DESK_Y;
     const monitorZ = DESK_CZ - 334 + 150;
-    const powerButtonMesh = new THREE.Mesh(
+    powerButtonMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(45.5, 42),
       new THREE.MeshStandardMaterial({
         color: 0x99ff99,
@@ -1275,7 +1278,6 @@ async function init() {
     // Front face of bezel, bottom-right — Z pushes it just proud of the bezel surface
     powerButtonMesh.position.set(monitorX + 279, monitorY + 217.5, monitorZ + 402);
     powerButtonMesh.rotation.x = THREE.MathUtils.degToRad(-10); // match screen tilt
-    powerButtonMesh.name = "powerButton";
     scene.add(powerButtonMesh);
 
     loadTexture("textures/fullscreen.png").then((iconTex) => {
@@ -1443,7 +1445,8 @@ async function init() {
     document.body.appendChild(controlsDiv);
 
     controls = new CameraControls(camera, controlsDiv);
-    controls.smoothTime = 1.0;
+    controls.smoothTime = 0.6;
+    controls.restThreshold = 0.1;
     controls.draggingSmoothTime = 0.15;
     controls.enabled = false;
 
@@ -1456,16 +1459,32 @@ async function init() {
       iframe.style.pointerEvents = "auto";
     });
 
-    // Power button click — raycaster against the glow disc
+    // Power button click — animate camera to face screen, then go fullscreen
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     controlsDiv.addEventListener("click", (e) => {
       pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObject(scene.getObjectByName("powerButton"));
+      const hits = raycaster.intersectObject(powerButtonMesh);
       if (hits.length > 0) {
-        iframe.requestFullscreen?.() ?? iframe.webkitRequestFullscreen?.();
+        // Save current camera state
+        preFullscreenPosition = camera.position.clone();
+        preFullscreenTarget = controls.getTarget(new THREE.Vector3());
+
+        // Distance to fill viewport height with the screen (FOV 50°, screen height 588)
+        const dist = (588 / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        // Screen is tilted -10° on X — offset camera position to face it straight on
+        const tiltRad = THREE.MathUtils.degToRad(-10);
+        const camX = SCREEN_X;
+        const camY = SCREEN_Y - Math.sin(tiltRad) * dist;
+        const camZ = SCREEN_Z + Math.cos(tiltRad) * dist;
+
+        controls
+          .setLookAt(camX, camY, camZ, SCREEN_X, SCREEN_Y, SCREEN_Z, true)
+          .then(() => {
+            iframe.requestFullscreen?.() ?? iframe.webkitRequestFullscreen?.();
+          });
       }
     });
   }
@@ -1474,12 +1493,26 @@ async function init() {
   resizeHandler();
 
   window.addEventListener("fullscreenchange", () => {
-    document.fullscreenElement === iframe
-      ? rendererWebGL.setAnimationLoop(null)
-      : rendererWebGL.setAnimationLoop(animate);
+    if (document.fullscreenElement === iframe) {
+      rendererWebGPU.setAnimationLoop(null);
+    } else {
+      rendererWebGPU.setAnimationLoop(animate);
+      if (preFullscreenPosition && preFullscreenTarget) {
+        // Wait until the end of the call stack to avoid a jittery transition
+        setTimeout(() => {
+          controls.setLookAt(
+            preFullscreenPosition.x, preFullscreenPosition.y, preFullscreenPosition.z,
+            preFullscreenTarget.x, preFullscreenTarget.y, preFullscreenTarget.z,
+            true,
+          );
+          preFullscreenPosition = null;
+          preFullscreenTarget = null;
+        }, 0);
+      }
+    }
   });
 
-  rendererWebGL.setAnimationLoop(animate);
+  rendererWebGPU.setAnimationLoop(animate);
 
   // Intro camera fly-in
   controls.setLookAt(
