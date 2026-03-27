@@ -5,21 +5,30 @@
   font-style: normal;
 }
 
-* {
+:root {
+  color-scheme: dark;
+  --page-bg: #111;
+  --page-text: #fff;
+  --link-color: #00ff00;
+  --shadow-color: #000;
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  font-weight: 400;
   text-wrap: pretty;
 }
 
 body {
-  background-color: #111;
-  margin: 0;
-  padding: 0;
+  background-color: var(--page-bg);
   overflow: hidden;
   font-family: monospace;
-  color: #fff;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--page-text);
   font-size: 10px;
 }
 
@@ -29,20 +38,39 @@ h1 {
   font-weight: 300;
   margin-bottom: 8px;
   margin-right: -2px;
-
-  @media screen and (max-width: 374px) {
-    font-size: 24px;
-  }
-}
-
-p {
-  line-height: 16px;
 }
 
 a {
-  color: #00ff00;
+  color: var(--link-color);
   text-decoration: none;
   pointer-events: all;
+}
+
+.renderer-layer,
+#controls-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.renderer-layer {
+  pointer-events: none;
+}
+
+.renderer-layer-css {
+  z-index: 1;
+}
+
+.renderer-layer-webgpu {
+  z-index: 2;
+}
+
+#controls-layer {
+  z-index: 0;
+  cursor: grab;
+}
+
+#controls-layer.is-dragging {
+  cursor: grabbing;
 }
 
 #info {
@@ -52,7 +80,13 @@ a {
   text-align: right;
   z-index: 100;
   padding: 16px;
-  filter: drop-shadow(0px 0px 3px #000);
+  filter: drop-shadow(0 0 3px var(--shadow-color));
   user-select: none;
   pointer-events: none;
+}
+
+@media screen and (max-width: 374px) {
+  h1 {
+    font-size: 24px;
+  }
 }

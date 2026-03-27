@@ -43,6 +43,13 @@ const DESK_Y = -550;
 const SCREEN_X = DESK_CX + 100;
 const SCREEN_Y = 0;
 const SCREEN_Z = DESK_CZ + 150;
+const MONITOR_X = DESK_CX + 100;
+const MONITOR_Y = DESK_Y;
+const MONITOR_Z = DESK_CZ - 184;
+const SCREEN_SIZE = { width: 852, height: 588 };
+const SCREEN_TILT = THREE.MathUtils.degToRad(-10);
+const CURTAIN_SEG_COLS = 16;
+const CURTAIN_SEG_ROWS = 20;
 
 /**
  * Atari ST-like RAL 7038 coloured matt plastic material
@@ -73,23 +80,42 @@ function loadTexture(url) {
   });
 }
 
+function forEachMesh(parent, callback) {
+  parent.traverse((child) => {
+    if (child.isMesh) callback(child);
+  });
+}
+
+function setStyles(element, styles) {
+  Object.assign(element.style, styles);
+}
+
+function setGeometryVertexColor(geometry, color) {
+  const colors = new Float32Array(geometry.attributes.position.count * 3);
+  for (let i = 0; i < geometry.attributes.position.count; i++) {
+    colors[i * 3] = color.r;
+    colors[i * 3 + 1] = color.g;
+    colors[i * 3 + 2] = color.b;
+  }
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+}
+
 function resizeHandler() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
+  rendererWebGPU.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   rendererWebGPU.setSize(window.innerWidth, window.innerHeight);
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animateCurtainPanel(mesh, origPositions, t, phase) {
   const pos = mesh.geometry.attributes.position;
-  const segRows = 20;
-  const segCols = 8;
-  for (let row = 0; row <= segRows; row++) {
-    const vFrac = row / segRows;
+  for (let row = 0; row <= CURTAIN_SEG_ROWS; row++) {
+    const vFrac = row / CURTAIN_SEG_ROWS;
     const amp = vFrac * vFrac * 35;
-    for (let col = 0; col <= segCols; col++) {
-      const idx = row * (segCols + 1) + col;
+    for (let col = 0; col <= CURTAIN_SEG_COLS; col++) {
+      const idx = row * (CURTAIN_SEG_COLS + 1) + col;
       const ox = origPositions[idx * 3];
       const oy = origPositions[idx * 3 + 1];
       const oz = origPositions[idx * 3 + 2];
@@ -148,20 +174,15 @@ function animate() {
 }
 
 function applyAtariMaterial(parent) {
-  parent.traverse((child) => {
-    if (child.isMesh) {
-      const m = atariMaterial.clone();
-      child.material = m;
-    }
+  forEachMesh(parent, (child) => {
+    child.material = atariMaterial;
   });
 }
 
 function enableShadows(parent) {
-  parent.traverse((child) => {
-    if (child.isMesh) {
-      child.castShadow = true;
-      child.receiveShadow = true;
-    }
+  forEachMesh(parent, (child) => {
+    child.castShadow = true;
+    child.receiveShadow = true;
   });
 }
 
@@ -323,8 +344,6 @@ function createWindow() {
   const curtainBottom = wy - wH / 2 - frameThick - 80;
   const curtainH = rodY - curtainBottom;
   const curtainCenterY = curtainBottom + curtainH / 2;
-  const segCols = 16;
-  const segRows = 20;
 
   function applyCurtainWave(geo) {
     const pos = geo.attributes.position;
@@ -337,7 +356,7 @@ function createWindow() {
     geo.computeVertexNormals();
   }
 
-  const cGeoL = new THREE.PlaneGeometry(curtainW, curtainH, segCols, segRows);
+  const cGeoL = new THREE.PlaneGeometry(curtainW, curtainH, CURTAIN_SEG_COLS, CURTAIN_SEG_ROWS);
   applyCurtainWave(cGeoL);
   curtainLeft = new THREE.Mesh(cGeoL, curtainMat);
   curtainLeft.position.set(-wW / 2 - curtainW / 2 + 40, curtainCenterY, 55);
@@ -345,7 +364,7 @@ function createWindow() {
   winGroup.add(curtainLeft);
   curtainLeftOrigPos = new Float32Array(curtainLeft.geometry.attributes.position.array);
 
-  const cGeoR = new THREE.PlaneGeometry(curtainW, curtainH, segCols, segRows);
+  const cGeoR = new THREE.PlaneGeometry(curtainW, curtainH, CURTAIN_SEG_COLS, CURTAIN_SEG_ROWS);
   applyCurtainWave(cGeoR);
   curtainRight = new THREE.Mesh(cGeoR, curtainMat);
   curtainRight.position.set(wW / 2 + curtainW / 2 - 40, curtainCenterY, 55);
@@ -437,11 +456,7 @@ function createBookshelf() {
           const fd = bD * (0.7 + rng() * 0.3);
           const geo = new THREE.BoxGeometry(fw, fh, fd);
           _bookColor.setHex(bookColors[Math.floor(rng() * bookColors.length)]);
-          const flatColors = new Float32Array(geo.attributes.position.count * 3);
-          for (let v = 0; v < geo.attributes.position.count; v++) {
-            flatColors[v * 3] = _bookColor.r; flatColors[v * 3 + 1] = _bookColor.g; flatColors[v * 3 + 2] = _bookColor.b;
-          }
-          geo.setAttribute("color", new THREE.BufferAttribute(flatColors, 3));
+          setGeometryVertexColor(geo, _bookColor);
           _bookMatrix.makeTranslation(curX + fw / 2, sy + 11 + fh * (s + 0.5), shelfZ + (rng() - 0.5) * 20);
           geo.applyMatrix4(_bookMatrix);
           bookGeos.push(geo);
@@ -452,11 +467,7 @@ function createBookshelf() {
         const tilt = (rng() - 0.5) * 0.22;
         const geo = new THREE.BoxGeometry(bW, bH, bD);
         _bookColor.setHex(bookColors[Math.floor(rng() * bookColors.length)]);
-        const flatColors = new Float32Array(geo.attributes.position.count * 3);
-        for (let v = 0; v < geo.attributes.position.count; v++) {
-          flatColors[v * 3] = _bookColor.r; flatColors[v * 3 + 1] = _bookColor.g; flatColors[v * 3 + 2] = _bookColor.b;
-        }
-        geo.setAttribute("color", new THREE.BufferAttribute(flatColors, 3));
+        setGeometryVertexColor(geo, _bookColor);
         _bookMatrix.makeRotationZ(tilt).setPosition(curX + bW / 2, sy + 11 + (bH / 2) * Math.cos(tilt), shelfZ + (rng() - 0.5) * 20);
         geo.applyMatrix4(_bookMatrix);
         bookGeos.push(geo);
@@ -1176,19 +1187,13 @@ async function init() {
   clock = new THREE.Clock(true);
 
   rendererCSS3D = new CSS3DRenderer();
-  rendererCSS3D.domElement.style.position = "absolute";
-  rendererCSS3D.domElement.style.top = "0";
-  rendererCSS3D.domElement.style.zIndex = "1";
-  rendererCSS3D.domElement.style.pointerEvents = "none";
+  rendererCSS3D.domElement.className = "renderer-layer renderer-layer-css";
   rendererCSS3D.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(rendererCSS3D.domElement);
 
   rendererWebGPU = new THREE.WebGPURenderer({ antialias: true, alpha: true, logarithmicDepthBuffer: true });
   rendererWebGPU.colorSpace = THREE.SRGBColorSpace;
-  rendererWebGPU.domElement.style.position = "absolute";
-  rendererWebGPU.domElement.style.top = "0";
-  rendererWebGPU.domElement.style.zIndex = "2";
-  rendererWebGPU.domElement.style.pointerEvents = "none";
+  rendererWebGPU.domElement.className = "renderer-layer renderer-layer-webgpu";
   rendererWebGPU.shadowMap.enabled = true;
   rendererWebGPU.shadowMap.type = THREE.PCFSoftShadowMap;
   rendererWebGPU.toneMapping = THREE.NeutralToneMapping;
@@ -1222,32 +1227,53 @@ async function init() {
     scene.add(dirLight.target);
   }
 
+  const [
+    monitor,
+    atariSt,
+    mouse,
+    plant,
+    fullscreenIconTexture,
+    badgeTexture,
+    mesmoTexture,
+    envMap,
+  ] = await Promise.all([
+    loadGltf("models/monitor.glb"),
+    loadGltf("models/atari-st.glb"),
+    loadGltf("models/mouse.glb"),
+    loadGltf("models/plant.glb"),
+    loadTexture("textures/fullscreen.png"),
+    loadTexture("textures/badge.webp"),
+    loadTexture("textures/mesmotronic.webp"),
+    loadTexture("./textures/2294472375_24a3b8ef46_o.webp"),
+  ]);
+
+  envMap.mapping = THREE.EquirectangularReflectionMapping;
+  envMap.colorSpace = THREE.SRGBColorSpace;
+
   // ── Monitor & screen ──────────────────────────────────────────────────────
   {
-    const screenSize = new THREE.Vector2(852, 588);
-
-    await loadGltf("models/monitor.glb").then((monitor) => {
-      monitor.scale.set(0.0825, 0.075, 0.075);
-      monitor.position.set(DESK_CX + 100, DESK_Y, DESK_CZ - 334 + 150);
-      applyAtariMaterial(monitor);
-      monitor.traverse((child) => {
-        if (child.isMesh) child.castShadow = true;
-      });
-      scene.add(monitor);
+    monitor.scale.set(0.0825, 0.075, 0.075);
+    monitor.position.set(MONITOR_X, MONITOR_Y, MONITOR_Z);
+    applyAtariMaterial(monitor);
+    forEachMesh(monitor, (child) => {
+      child.castShadow = true;
     });
+    scene.add(monitor);
 
     iframe = document.createElement("iframe");
-    iframe.style.width = `${screenSize.width}px`;
-    iframe.style.height = `${screenSize.height}px`;
-    iframe.style.border = "0px";
-    iframe.style.backfaceVisibility = "hidden";
+    setStyles(iframe, {
+      width: `${SCREEN_SIZE.width}px`,
+      height: `${SCREEN_SIZE.height}px`,
+      border: "0px",
+      backfaceVisibility: "hidden",
+    });
     iframe.src = "./hatari/";
     const screen = new CSS3DObject(iframe);
     screen.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z);
-    screen.rotation.x = THREE.MathUtils.degToRad(-10);
+    screen.rotation.x = SCREEN_TILT;
     scene.add(screen);
 
-    const geometry = new THREE.PlaneGeometry(screenSize.width, screenSize.height);
+    const geometry = new THREE.PlaneGeometry(SCREEN_SIZE.width, SCREEN_SIZE.height);
     const material = new THREE.MeshBasicMaterial({
       color: 0xff0000,
       blending: THREE.NoBlending,
@@ -1256,13 +1282,10 @@ async function init() {
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z);
-    mesh.rotation.x = THREE.MathUtils.degToRad(-10);
+    mesh.rotation.x = SCREEN_TILT;
     scene.add(mesh);
 
     // Power button — glowing disc on the monitor bezel (bottom-right)
-    const monitorX = DESK_CX + 100;
-    const monitorY = DESK_Y;
-    const monitorZ = DESK_CZ - 334 + 150;
     powerButtonMesh = new THREE.Mesh(
       new THREE.PlaneGeometry(45.5, 42),
       new THREE.MeshStandardMaterial({
@@ -1276,23 +1299,21 @@ async function init() {
       }),
     );
     // Front face of bezel, bottom-right — Z pushes it just proud of the bezel surface
-    powerButtonMesh.position.set(monitorX + 279, monitorY + 217.5, monitorZ + 402);
-    powerButtonMesh.rotation.x = THREE.MathUtils.degToRad(-10); // match screen tilt
+    powerButtonMesh.position.set(MONITOR_X + 279, MONITOR_Y + 217.5, MONITOR_Z + 402);
+    powerButtonMesh.rotation.x = SCREEN_TILT;
     scene.add(powerButtonMesh);
 
-    loadTexture("textures/fullscreen.png").then((iconTex) => {
-      const iconMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(45.5 * 0.75, 42 * 0.75),
-        new THREE.MeshBasicMaterial({ map: iconTex, transparent: true, depthWrite: false, opacity: 0.333 }),
-      );
-      iconMesh.position.z = 1; // just proud of the button face
-      powerButtonMesh.add(iconMesh);
-    });
+    const iconMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(45.5 * 0.75, 42 * 0.75),
+      new THREE.MeshBasicMaterial({ map: fullscreenIconTexture, transparent: true, depthWrite: false, opacity: 0.333 }),
+    );
+    iconMesh.position.z = 1; // just proud of the button face
+    powerButtonMesh.add(iconMesh);
 
     // Monitor glow — soft blue-white rect light matching screen face
-    const screenLight = new THREE.RectAreaLight(0xc8d8ff, 3.5, screenSize.width, screenSize.height);
+    const screenLight = new THREE.RectAreaLight(0xc8d8ff, 3.5, SCREEN_SIZE.width, SCREEN_SIZE.height);
     screenLight.position.set(SCREEN_X, SCREEN_Y, SCREEN_Z + 20);
-    screenLight.rotation.x = THREE.MathUtils.degToRad(-10);
+    screenLight.rotation.x = SCREEN_TILT;
     // RectAreaLight emits in -Z local space; rotate 180° on Y to point toward +Z (toward the chair)
     screenLight.rotation.y = Math.PI;
     scene.add(screenLight);
@@ -1300,46 +1321,36 @@ async function init() {
   }
 
   // ── Atari ST ──────────────────────────────────────────────────────────────
-  await loadGltf("models/atari-st.glb").then((atariSt) => {
-    atariSt.rotation.set(0, THREE.MathUtils.degToRad(5), 0);
-    atariSt.scale.set(7, 7, 7);
-    atariSt.position.set(DESK_CX - 850, DESK_Y - 6, DESK_CZ + 750);
-    atariSt.traverse((child) => {
-      if (child.isMesh) {
-        child.geometry.computeVertexNormals();
-      }
-    });
-    applyAtariMaterial(atariSt);
-    enableShadows(atariSt);
-    scene.add(atariSt);
-
-    return loadTexture("textures/badge.webp").then((badgeTexture) => {
-      const badgeGeometry = new THREE.PlaneGeometry(37, 4);
-      const badgeMaterial = new THREE.MeshStandardMaterial({ map: badgeTexture, transparent: true, roughness: 0.6, metalness: 0 });
-      const badgeMesh = new THREE.Mesh(badgeGeometry, badgeMaterial);
-      badgeMesh.position.set(138.6, 21.5, 2.5);
-      badgeMesh.rotation.x = -Math.PI / 2.35;
-      atariSt.add(badgeMesh);
-    });
+  atariSt.rotation.set(0, THREE.MathUtils.degToRad(5), 0);
+  atariSt.scale.set(7, 7, 7);
+  atariSt.position.set(DESK_CX - 850, DESK_Y - 6, DESK_CZ + 750);
+  forEachMesh(atariSt, (child) => {
+    child.geometry.computeVertexNormals();
   });
+  applyAtariMaterial(atariSt);
+  enableShadows(atariSt);
+  scene.add(atariSt);
+
+  const badgeGeometry = new THREE.PlaneGeometry(37, 4);
+  const badgeMaterial = new THREE.MeshStandardMaterial({ map: badgeTexture, transparent: true, roughness: 0.6, metalness: 0 });
+  const badgeMesh = new THREE.Mesh(badgeGeometry, badgeMaterial);
+  badgeMesh.position.set(138.6, 21.5, 2.5);
+  badgeMesh.rotation.x = -Math.PI / 2.35;
+  atariSt.add(badgeMesh);
 
   // ── Mouse ─────────────────────────────────────────────────────────────────
-  await loadGltf("models/mouse.glb").then((mouse) => {
-    mouse.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(-15));
-    mouse.scale.set(3, 3, 3);
-    mouse.position.set(DESK_CX + 800, DESK_Y, DESK_CZ + 700);
-    applyAtariMaterial(mouse);
-    enableShadows(mouse);
-    scene.add(mouse);
-  });
+  mouse.rotation.set(-Math.PI / 2, 0, THREE.MathUtils.degToRad(-15));
+  mouse.scale.set(3, 3, 3);
+  mouse.position.set(DESK_CX + 800, DESK_Y, DESK_CZ + 700);
+  applyAtariMaterial(mouse);
+  enableShadows(mouse);
+  scene.add(mouse);
 
   // ── Plant (on the desk, back-right corner) ─────────────────────────────────
-  await loadGltf("models/plant.glb").then((plant) => {
-    plant.scale.set(82, 82, 82);
-    plant.position.set(DESK_CX + 1000, DESK_Y, DESK_CZ - 600);
-    enableShadows(plant);
-    scene.add(plant);
-  });
+  plant.scale.set(82, 82, 82);
+  plant.position.set(DESK_CX + 1000, DESK_Y, DESK_CZ - 600);
+  enableShadows(plant);
+  scene.add(plant);
 
   // ── Glass desk ────────────────────────────────────────────────────────────
   {
@@ -1363,8 +1374,6 @@ async function init() {
     desktop.castShadow = true;
     desktop.receiveShadow = true;
 
-    const mesmoTexture = await loadTexture("textures/mesmotronic.webp");
-
     const watermarkGeometry = new THREE.PlaneGeometry(2048, 1024);
     const watermarkMaterial = new THREE.MeshBasicMaterial({
       map: mesmoTexture,
@@ -1379,7 +1388,7 @@ async function init() {
     scene.add(desktop);
 
     const legRadius = 30;
-    const legHeight = 1500;
+    const legHeight = desktop.position.y - 5 - (FLOOR_Y + 6);
     const legGeometry = new THREE.CylinderGeometry(legRadius, legRadius, legHeight, 32);
     const dx = 3125 / 2 - legRadius * 1.5 - 100;
     const dz = 2000 / 2 - legRadius * 1.5 - 100;
@@ -1391,9 +1400,6 @@ async function init() {
       [desktop.position.x + dx, y, desktop.position.z + dz],
     ];
 
-    const envMap = await loadTexture("./textures/2294472375_24a3b8ef46_o.webp");
-    envMap.mapping = THREE.EquirectangularReflectionMapping;
-    envMap.colorSpace = THREE.SRGBColorSpace;
     const legMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xf0f0f0,
       metalness: 1.0,
@@ -1435,13 +1441,7 @@ async function init() {
     CameraControls.install({ THREE });
 
     const controlsDiv = document.createElement("div");
-    controlsDiv.style.position = "absolute";
-    controlsDiv.style.top = "0";
-    controlsDiv.style.left = "0";
-    controlsDiv.style.width = "100%";
-    controlsDiv.style.height = "100%";
-    controlsDiv.style.zIndex = "0";
-    controlsDiv.style.cursor = "grab";
+    controlsDiv.id = "controls-layer";
     document.body.appendChild(controlsDiv);
 
     controls = new CameraControls(camera, controlsDiv);
@@ -1450,19 +1450,27 @@ async function init() {
     controls.draggingSmoothTime = 0.15;
     controls.enabled = false;
 
+    const setDraggingState = (isDragging) => {
+      controlsDiv.classList.toggle("is-dragging", isDragging);
+      iframe.style.pointerEvents = isDragging ? "none" : "auto";
+    };
+
     controlsDiv.addEventListener("pointerdown", () => {
-      controlsDiv.style.cursor = "grabbing";
-      iframe.style.pointerEvents = "none";
+      setDraggingState(true);
     });
-    controlsDiv.addEventListener("pointerup", () => {
-      controlsDiv.style.cursor = "grab";
-      iframe.style.pointerEvents = "auto";
+    window.addEventListener("pointerup", () => {
+      setDraggingState(false);
+    });
+    window.addEventListener("pointercancel", () => {
+      setDraggingState(false);
     });
 
     // Power button click — animate camera to face screen, then go fullscreen
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     controlsDiv.addEventListener("click", (e) => {
+      if (!powerButtonMesh) return;
+
       pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
@@ -1473,12 +1481,11 @@ async function init() {
         preFullscreenTarget = controls.getTarget(new THREE.Vector3());
 
         // Distance to fill viewport height with the screen (FOV 50°, screen height 588)
-        const dist = (588 / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        const dist = (SCREEN_SIZE.height / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         // Screen is tilted -10° on X — offset camera position to face it straight on
-        const tiltRad = THREE.MathUtils.degToRad(-10);
         const camX = SCREEN_X;
-        const camY = SCREEN_Y - Math.sin(tiltRad) * dist;
-        const camZ = SCREEN_Z + Math.cos(tiltRad) * dist;
+        const camY = SCREEN_Y - Math.sin(SCREEN_TILT) * dist;
+        const camZ = SCREEN_Z + Math.cos(SCREEN_TILT) * dist;
 
         controls
           .setLookAt(camX, camY, camZ, SCREEN_X, SCREEN_Y, SCREEN_Z, true)
@@ -1492,8 +1499,8 @@ async function init() {
   window.addEventListener("resize", resizeHandler);
   resizeHandler();
 
-  window.addEventListener("fullscreenchange", () => {
-    if (document.fullscreenElement === iframe) {
+  const handleFullscreenChange = () => {
+    if (document.fullscreenElement === iframe || document.webkitFullscreenElement === iframe) {
       rendererWebGPU.setAnimationLoop(null);
     } else {
       rendererWebGPU.setAnimationLoop(animate);
@@ -1510,7 +1517,9 @@ async function init() {
         }, 0);
       }
     }
-  });
+  };
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 
   rendererWebGPU.setAnimationLoop(animate);
 
